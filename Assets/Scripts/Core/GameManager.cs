@@ -16,7 +16,10 @@ namespace Tanks.Core
     public class GameManager : MonoBehaviour
     {
         private readonly List<Health> enemies = new();
+        private readonly RunProgression progression = new();
         private Health playerHealth;
+        private string activeMessage;
+        private float messageExpiresAt;
 
         public static GameManager Instance { get; private set; }
 
@@ -25,6 +28,9 @@ namespace Tanks.Core
         public GameState CurrentState { get; private set; } = GameState.Booting;
         public Health PlayerHealth => playerHealth;
         public int EnemyCount => enemies.Count;
+        public int CurrentLevel => progression.CurrentLevel;
+        public RunProgression Progression => progression;
+        public string ActiveMessage => Time.time < messageExpiresAt ? activeMessage : string.Empty;
 
         private void Awake()
         {
@@ -65,6 +71,24 @@ namespace Tanks.Core
             }
         }
 
+        public void ResetRun()
+        {
+            progression.Reset();
+            ShowMessage($"Level {CurrentLevel}\n{progression.LastUpgradeSummary}", 2.5f);
+        }
+
+        public void AdvanceToNextLevel()
+        {
+            progression.AdvanceToNextLevel();
+            ShowMessage($"Level {CurrentLevel}\n{progression.LastUpgradeSummary}", 2.75f);
+        }
+
+        public void ShowMessage(string message, float duration)
+        {
+            activeMessage = message;
+            messageExpiresAt = Time.time + duration;
+        }
+
         public void ClearEnemies()
         {
             for (int index = 0; index < enemies.Count; index++)
@@ -94,6 +118,16 @@ namespace Tanks.Core
             SetState(GameState.Playing);
         }
 
+        public void CompleteLevel()
+        {
+            if (CurrentState != GameState.Playing)
+            {
+                return;
+            }
+
+            SetState(GameState.Victory);
+        }
+
         private void OnPlayerDied(Health deadPlayer)
         {
             SetState(GameState.Defeat);
@@ -103,11 +137,6 @@ namespace Tanks.Core
         {
             deadEnemy.Died -= OnEnemyDied;
             enemies.Remove(deadEnemy);
-
-            if (CurrentState == GameState.Playing && enemies.Count == 0)
-            {
-                SetState(GameState.Victory);
-            }
         }
 
         private void SetState(GameState newState)

@@ -11,6 +11,7 @@ namespace Tanks.Combat
         [SerializeField] private float projectileLifetime = 4f;
         [SerializeField] private float projectileRadius = 0.28f;
         [SerializeField] private float projectileSpawnOffset = 0.45f;
+        [SerializeField] private ProjectileStyle projectileStyle = ProjectileStyle.Player;
 
         private float nextFireTime;
         private Health ownerHealth;
@@ -37,6 +38,11 @@ namespace Tanks.Combat
             projectileDamage = damage;
             projectileLifetime = lifetime;
             projectileRadius = radius;
+        }
+
+        public void ConfigureProjectileStyle(ProjectileStyle style)
+        {
+            projectileStyle = style;
         }
 
         public bool TryFire()
@@ -74,6 +80,7 @@ namespace Tanks.Combat
                 projectileDamage,
                 projectileLifetime,
                 projectileRadius,
+                projectileStyle,
                 ownerTeam,
                 gameObject);
 
@@ -84,13 +91,50 @@ namespace Tanks.Combat
 
         private void SpawnMuzzleFlash(Vector3 position, Vector3 direction, Team team)
         {
+            float flashScale = GetMuzzleFlashScale();
+            float flashLife = GetMuzzleFlashLifetime();
+            Color flashColor = CombatVisualPalette.GetMuzzleFlashColor(projectileStyle, team);
+
             SimpleLifetimeEffect.SpawnSphere(
                 position + direction * 0.15f,
-                CombatVisualPalette.GetMuzzleFlashColor(team),
-                0.08f,
-                Vector3.one * (projectileRadius * 1.8f),
-                Vector3.one * (projectileRadius * 0.4f),
-                direction * 3f);
+                flashColor,
+                flashLife,
+                Vector3.one * (projectileRadius * 1.8f * flashScale),
+                Vector3.one * (projectileRadius * 0.4f * flashScale),
+                direction * (2.4f + flashScale));
+
+            if (projectileStyle == ProjectileStyle.BulwarkEnemy)
+            {
+                SimpleLifetimeEffect.SpawnCube(
+                    position + direction * 0.1f,
+                    flashColor,
+                    flashLife * 1.15f,
+                    new Vector3(projectileRadius * 2.8f, projectileRadius * 1.4f, projectileRadius * 2f),
+                    Vector3.one * (projectileRadius * 0.5f),
+                    direction * 1.2f);
+            }
+        }
+
+        private float GetMuzzleFlashScale()
+        {
+            return projectileStyle switch
+            {
+                ProjectileStyle.RaiderEnemy => 0.82f,
+                ProjectileStyle.BulwarkEnemy => 1.75f,
+                ProjectileStyle.BasicEnemy => 1.1f,
+                _ => 1f
+            };
+        }
+
+        private float GetMuzzleFlashLifetime()
+        {
+            return projectileStyle switch
+            {
+                ProjectileStyle.RaiderEnemy => 0.06f,
+                ProjectileStyle.BulwarkEnemy => 0.12f,
+                ProjectileStyle.BasicEnemy => 0.09f,
+                _ => 0.08f
+            };
         }
     }
 }

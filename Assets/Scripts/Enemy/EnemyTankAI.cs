@@ -17,6 +17,10 @@ namespace Tanks.Enemy
         [SerializeField] private float obstacleCheckDistance = 4f;
         [SerializeField] private float aimAngle = 10f;
         [SerializeField] private float aimConfirmTime = 0.18f;
+        [SerializeField] private float orbitStrength = 0.3f;
+        [SerializeField] private float holdMoveThrottle = 0.2f;
+        [SerializeField] private float repositionThrottle = 0.65f;
+        [SerializeField] private float advanceThrottle = 1f;
 
         private Rigidbody tankRigidbody;
         private TankWeapon tankWeapon;
@@ -28,6 +32,8 @@ namespace Tanks.Enemy
         private float avoidTimer;
         private int avoidTurnDirection = 1;
         private float aimTimer;
+        private int orbitDirection = 1;
+        private float orbitTimer;
 
         private void Awake()
         {
@@ -36,6 +42,7 @@ namespace Tanks.Enemy
             turretAim = GetComponent<TankTurretAim>();
             health = GetComponent<Health>();
             lastPosition = transform.position;
+            orbitDirection = Random.value < 0.5f ? -1 : 1;
         }
 
         private void FixedUpdate()
@@ -58,8 +65,10 @@ namespace Tanks.Enemy
 
             float targetDistance = toTarget.magnitude;
             Vector3 targetDirection = toTarget / targetDistance;
+            bool hasLineOfSight = HasLineOfSight(targetDistance);
 
-            MovementCommand movement = BuildMovementCommand(targetDirection, targetDistance);
+            UpdateOrbitDirection(targetDistance, hasLineOfSight);
+            MovementCommand movement = BuildMovementCommand(targetDirection, targetDistance, hasLineOfSight);
             float turnAmount = Vector3.SignedAngle(transform.forward, movement.FacingDirection, Vector3.up);
             float clampedTurn = Mathf.Clamp(turnAmount, -turnSpeed * Time.fixedDeltaTime, turnSpeed * Time.fixedDeltaTime);
             Quaternion turnStep = Quaternion.Euler(0f, clampedTurn, 0f);
@@ -113,13 +122,20 @@ namespace Tanks.Enemy
             }
         }
 
-        public void Configure(Transform targetTransform, float speed, float rotationSpeed, float range, float desiredStopDistance)
+        public void Configure(Transform targetTransform, EnemyArchetype archetype)
         {
             target = targetTransform;
-            moveSpeed = speed;
-            turnSpeed = rotationSpeed;
-            attackRange = range;
-            holdDistance = desiredStopDistance;
+            moveSpeed = archetype.MoveSpeed;
+            turnSpeed = archetype.TurnSpeed;
+            attackRange = archetype.AttackRange;
+            holdDistance = archetype.HoldDistance;
+            retreatDistance = archetype.RetreatDistance;
+            aimAngle = archetype.AimTolerance;
+            aimConfirmTime = archetype.AimConfirmTime;
+            orbitStrength = archetype.OrbitStrength;
+            holdMoveThrottle = archetype.HoldMoveThrottle;
+            repositionThrottle = archetype.RepositionThrottle;
+            advanceThrottle = archetype.AdvanceThrottle;
         }
 
         public void SetTarget(Transform targetTransform)
@@ -127,7 +143,7 @@ namespace Tanks.Enemy
             target = targetTransform;
         }
 
-        private MovementCommand BuildMovementCommand(Vector3 targetDirection, float distanceToTarget)
+        private MovementCommand BuildMovementCommand(Vector3 targetDirection, float distanceToTarget, bool hasLineOfSight)
         {
             if (avoidTimer > 0f)
             {
@@ -143,17 +159,54 @@ namespace Tanks.Enemy
 
             if (distanceToTarget > holdDistance)
             {
-                Vector3 approachDirection = ChooseMovementDirection(targetDirection);
-                return new MovementCommand(1f, approachDirection);
+                Vector3 approachDirection = ChooseMovementDirection(GetApproachDirection(targetDirection, hasLineOfSight));
+                return new MovementCommand(advanceThrottle, approachDirection);
             }
 
-            if (!HasLineOfSight(distanceToTarget))
+            if (!hasLineOfSight)
             {
-                Vector3 repositionDirection = ChooseMovementDirection(targetDirection);
-                return new MovementCommand(0.65f, repositionDirection);
+                Vector3 repositionDirection = ChooseMovementDirection(GetApproachDirection(targetDirection, false));
+                return new MovementCommand(repositionThrottle, repositionDirection);
+            }
+
+            if (holdMoveThrottle > 0.01f)
+            {
+                return new MovementCommand(holdMoveThrottle, GetOrbitDirection(targetDirection));
             }
 
             return new MovementCommand(0f, targetDirection);
+        }
+
+        private void UpdateOrbitDirection(float distanceToTarget, bool hasLineOfSight)
+        {
+            if (!hasLineOfSight || distanceToTarget > attackRange || orbitStrength < 0.05f)
+            {
+                orbitTimer = 0f;
+                return;
+            }
+
+            orbitTimer += Time.fixedDeltaTime;
+            float orbitSwitchInterval = Mathf.Lerp(2.4f, 0.85f, Mathf.Clamp01(orbitStrength));
+            if (orbitTimer >= orbitSwitchInterval)
+            {
+                orbitTimer = 0f;
+                orbitDirection *= -1;
+            }
+        }
+
+        private Vector3 GetApproachDirection(Vector3 targetDirection, bool hasLineOfSight)
+        {
+            Vector3 orbitOffset = Vector3.Cross(Vector3.up, targetDirection) * orbitDirection;
+            float flankWeight = hasLineOfSight ? orbitStrength * 0.55f : orbitStrength * 0.8f;
+            Vector3 desiredDirection = targetDirection + orbitOffset * flankWeight;
+            return desiredDirection.sqrMagnitude > 0.001f ? desiredDirection.normalized : targetDirection;
+        }
+
+        private Vector3 GetOrbitDirection(Vector3 targetDirection)
+        {
+            Vector3 orbitOffset = Vector3.Cross(Vector3.up, targetDirection) * orbitDirection;
+            Vector3 desiredDirection = targetDirection + orbitOffset * orbitStrength;
+            return desiredDirection.sqrMagnitude > 0.001f ? desiredDirection.normalized : targetDirection;
         }
 
         private Vector3 ChooseMovementDirection(Vector3 targetDirection)

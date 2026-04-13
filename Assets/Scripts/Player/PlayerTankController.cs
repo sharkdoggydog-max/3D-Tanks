@@ -21,6 +21,9 @@ namespace Tanks.Player
         private float turnInput;
         private bool fireHeld;
 
+        public bool HasAimPoint { get; private set; }
+        public Vector3 CurrentAimPoint { get; private set; }
+
         private void Awake()
         {
             tankRigidbody = GetComponent<Rigidbody>();
@@ -36,6 +39,7 @@ namespace Tanks.Player
                 moveInput = 0f;
                 turnInput = 0f;
                 fireHeld = false;
+                HasAimPoint = false;
                 return;
             }
 
@@ -118,10 +122,13 @@ namespace Tanks.Player
 
             if (TryGetMouseAimPoint(mouse, out Vector3 aimPoint))
             {
+                HasAimPoint = true;
+                CurrentAimPoint = aimPoint;
                 turretAim.AimAtWorldPoint(aimPoint);
                 return;
             }
 
+            HasAimPoint = false;
             turretAim.AimInDirection(transform.forward);
         }
 

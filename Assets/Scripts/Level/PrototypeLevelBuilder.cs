@@ -7,30 +7,51 @@ namespace Tanks.Level
     {
         [SerializeField] private float cellSize = 6f;
         [SerializeField] private float wallHeight = 3f;
-        [SerializeField] private int mazeWidth = 41;
-        [SerializeField] private int mazeHeight = 25;
-        [SerializeField] private int enemySpawnCount = 10;
+        [SerializeField] private int baseMazeWidth = 31;
+        [SerializeField] private int baseMazeHeight = 21;
+        [SerializeField] private int baseEnemySpawnCount = 5;
         [SerializeField] private int generationSeed = 73425;
         [SerializeField] private bool randomizeSeed;
 
         private readonly List<Vector3> enemySpawnPoints = new();
+        private readonly List<RectInt> combatRooms = new();
         private Transform generatedRoot;
+        private int currentLevel = 1;
+        private int currentEnemySpawnCount;
+
+        private RectInt entryRoom;
+        private RectInt eastCombatRoom;
+        private RectInt centralCombatRoom;
+        private RectInt westCombatRoom;
+        private RectInt objectiveRoom;
+        private RectInt exitRoom;
 
         public Vector3 PlayerSpawnPoint { get; private set; }
+        public Vector3 ObjectivePoint { get; private set; }
+        public Vector3 ExitPoint { get; private set; }
         public IReadOnlyList<Vector3> EnemySpawnPoints => enemySpawnPoints;
+
+        public void ConfigureForLevel(int level)
+        {
+            currentLevel = Mathf.Max(1, level);
+        }
 
         public void BuildLevel()
         {
             enemySpawnPoints.Clear();
+            combatRooms.Clear();
 
             if (generatedRoot != null)
             {
                 Destroy(generatedRoot.gameObject);
             }
 
-            int width = MakeOdd(Mathf.Max(21, mazeWidth));
-            int height = MakeOdd(Mathf.Max(21, mazeHeight));
-            int seed = randomizeSeed ? Random.Range(int.MinValue, int.MaxValue) : generationSeed;
+            int width = MakeOdd(Mathf.Max(21, baseMazeWidth + (currentLevel - 1) * 2));
+            int height = MakeOdd(Mathf.Max(21, baseMazeHeight + ((currentLevel - 1) / 2) * 2));
+            currentEnemySpawnCount = Mathf.Min(14, baseEnemySpawnCount + currentLevel - 1);
+            int seed = randomizeSeed ? Random.Range(int.MinValue, int.MaxValue) : generationSeed + currentLevel * 131;
+
+            DefineRoomLayout(width, height);
 
             bool[,] walls = GenerateMaze(width, height, seed);
             generatedRoot = new GameObject("GeneratedLevel").transform;
@@ -38,7 +59,22 @@ namespace Tanks.Level
 
             CreateFloor(width, height);
             CreateMazeWalls(walls, width, height);
-            SelectSpawnPoints(walls, width, height);
+            SelectMissionPointsAndSpawns(walls, width, height);
+            CreateRoomPurposeProps(width, height);
+        }
+
+        private void DefineRoomLayout(int width, int height)
+        {
+            entryRoom = CreateRoom(3, 3, 7, 5, width, height);
+            eastCombatRoom = CreateRoom(width - 11, 3, 7, 5, width, height);
+            centralCombatRoom = CreateRoom(width / 2 - 4, 5, 9, 7, width, height);
+            westCombatRoom = CreateRoom(5, height - 8, 9, 5, width, height);
+            exitRoom = CreateRoom(width - 14, height - 8, 10, 5, width, height);
+            objectiveRoom = CreateRoom(width / 2 - 5, height - 10, 11, 7, width, height);
+
+            combatRooms.Add(eastCombatRoom);
+            combatRooms.Add(centralCombatRoom);
+            combatRooms.Add(westCombatRoom);
         }
 
         private bool[,] GenerateMaze(int width, int height, int seed)
@@ -96,20 +132,20 @@ namespace Tanks.Level
                 }
             }
 
-            CarveCombatRooms(walls, width, height);
+            CarvePurposeRooms(walls);
             return walls;
         }
 
-        private void CarveCombatRooms(bool[,] walls, int width, int height)
+        private void CarvePurposeRooms(bool[,] walls)
         {
             RectInt[] rooms =
             {
-                CreateRoom(3, 3, 7, 5, width, height),
-                CreateRoom(width - 11, 3, 7, 5, width, height),
-                CreateRoom(width / 2 - 4, 5, 9, 7, width, height),
-                CreateRoom(5, height - 8, 9, 5, width, height),
-                CreateRoom(width - 14, height - 8, 10, 5, width, height),
-                CreateRoom(width / 2 - 5, height - 10, 11, 7, width, height)
+                entryRoom,
+                eastCombatRoom,
+                centralCombatRoom,
+                westCombatRoom,
+                exitRoom,
+                objectiveRoom
             };
 
             for (int index = 0; index < rooms.Length; index++)
@@ -119,24 +155,42 @@ namespace Tanks.Level
             }
         }
 
-        private void SelectSpawnPoints(bool[,] walls, int width, int height)
+        private void SelectMissionPointsAndSpawns(bool[,] walls, int width, int height)
         {
             List<Vector2Int> walkableCells = CollectWalkableCells(walls, width, height);
-            Vector2Int playerCell = FindClosestWalkable(walkableCells, new Vector2Int(1, 1));
+            Vector2Int playerCell = FindClosestWalkable(walkableCells, GetRoomCenterCell(entryRoom));
+            Vector2Int objectiveCell = FindClosestWalkable(walkableCells, GetRoomCenterCell(objectiveRoom));
+            Vector2Int exitCell = FindClosestWalkable(walkableCells, GetRoomCenterCell(exitRoom));
             int[,] distanceField = BuildDistanceField(walls, width, height, playerCell);
 
             PlayerSpawnPoint = CellToWorld(playerCell, width, height);
+            ObjectivePoint = CellToWorld(objectiveCell, width, height);
+            ExitPoint = CellToWorld(exitCell, width, height);
 
             walkableCells.Sort((left, right) => distanceField[right.x, right.y].CompareTo(distanceField[left.x, left.y]));
 
             List<Vector2Int> chosenEnemies = new();
+            int playerDistanceFloor = Mathf.Max(width, height) / 4;
+
+            TryAddSpawnNearAnchor(walkableCells, chosenEnemies, playerCell, objectiveCell + Vector2Int.left * 2, 5, 6, playerDistanceFloor);
+            TryAddSpawnNearAnchor(walkableCells, chosenEnemies, playerCell, objectiveCell + Vector2Int.right * 2, 5, 6, playerDistanceFloor);
+            TryAddSpawnNearAnchor(walkableCells, chosenEnemies, playerCell, GetRoomCenterCell(eastCombatRoom), 5, 7, playerDistanceFloor - 1);
+            TryAddSpawnNearAnchor(walkableCells, chosenEnemies, playerCell, GetRoomCenterCell(westCombatRoom), 5, 7, playerDistanceFloor - 1);
+            TryAddSpawnNearAnchor(walkableCells, chosenEnemies, playerCell, GetRoomCenterCell(centralCombatRoom), 5, 6, playerDistanceFloor - 2);
+            TryAddSpawnNearAnchor(walkableCells, chosenEnemies, playerCell, exitCell + Vector2Int.left, 4, 5, playerDistanceFloor - 2);
+
             int requiredDistanceFromPlayer = Mathf.Max(width, height) / 3;
             int minimumSpacing = 7;
 
-            for (int index = 0; index < walkableCells.Count && chosenEnemies.Count < enemySpawnCount; index++)
+            for (int index = 0; index < walkableCells.Count && chosenEnemies.Count < currentEnemySpawnCount; index++)
             {
                 Vector2Int candidate = walkableCells[index];
                 int candidateDistance = distanceField[candidate.x, candidate.y];
+
+                if (candidate == playerCell || candidate == objectiveCell || candidate == exitCell)
+                {
+                    continue;
+                }
 
                 if (candidateDistance < requiredDistanceFromPlayer)
                 {
@@ -151,10 +205,10 @@ namespace Tanks.Level
                 chosenEnemies.Add(candidate);
             }
 
-            for (int index = 0; index < walkableCells.Count && chosenEnemies.Count < enemySpawnCount; index++)
+            for (int index = 0; index < walkableCells.Count && chosenEnemies.Count < currentEnemySpawnCount; index++)
             {
                 Vector2Int candidate = walkableCells[index];
-                if (candidate == playerCell || chosenEnemies.Contains(candidate))
+                if (candidate == playerCell || candidate == objectiveCell || candidate == exitCell || chosenEnemies.Contains(candidate))
                 {
                     continue;
                 }
@@ -207,6 +261,71 @@ namespace Tanks.Level
             wall.transform.position = position + Vector3.up * (wallHeight * 0.5f);
             wall.transform.localScale = new Vector3(cellSize, wallHeight, cellSize);
             wall.GetComponent<Renderer>().material.color = new Color(0.45f, 0.47f, 0.5f);
+        }
+
+        private void CreateRoomPurposeProps(int width, int height)
+        {
+            CreateRoomPad("EntryPad", GetRoomCenterWorld(entryRoom, width, height), new Vector3(cellSize * 3f, 0.16f, cellSize * 2.4f), new Color(0.2f, 0.48f, 0.24f));
+            CreateGuidePillar("EntryBeaconLeft", GetRoomCenterWorld(entryRoom, width, height) + new Vector3(-cellSize * 1.1f, 0f, -cellSize * 0.7f), 1.7f, new Color(0.52f, 0.88f, 0.56f));
+            CreateGuidePillar("EntryBeaconRight", GetRoomCenterWorld(entryRoom, width, height) + new Vector3(cellSize * 1.1f, 0f, -cellSize * 0.7f), 1.7f, new Color(0.52f, 0.88f, 0.56f));
+
+            CreateRoomPad("ObjectivePad", GetRoomCenterWorld(objectiveRoom, width, height), new Vector3(cellSize * 3.5f, 0.16f, cellSize * 3f), new Color(0.46f, 0.18f, 0.16f));
+            CreateCoverBlock("ObjectiveCoverNorth", GetRoomCenterWorld(objectiveRoom, width, height) + new Vector3(0f, 0f, cellSize * 1.1f), new Vector3(cellSize * 1.1f, 1.5f, cellSize * 0.7f), new Color(0.48f, 0.36f, 0.32f));
+            CreateCoverBlock("ObjectiveCoverSouth", GetRoomCenterWorld(objectiveRoom, width, height) + new Vector3(0f, 0f, -cellSize * 1.1f), new Vector3(cellSize * 1.1f, 1.5f, cellSize * 0.7f), new Color(0.48f, 0.36f, 0.32f));
+            CreateCoverBlock("ObjectiveCoverLeft", GetRoomCenterWorld(objectiveRoom, width, height) + new Vector3(-cellSize * 1.4f, 0f, 0f), new Vector3(cellSize * 0.7f, 1.5f, cellSize * 1f), new Color(0.48f, 0.36f, 0.32f));
+            CreateCoverBlock("ObjectiveCoverRight", GetRoomCenterWorld(objectiveRoom, width, height) + new Vector3(cellSize * 1.4f, 0f, 0f), new Vector3(cellSize * 0.7f, 1.5f, cellSize * 1f), new Color(0.48f, 0.36f, 0.32f));
+
+            CreateRoomPad("ExitPad", GetRoomCenterWorld(exitRoom, width, height), new Vector3(cellSize * 3.8f, 0.16f, cellSize * 2.8f), new Color(0.12f, 0.42f, 0.5f));
+            CreateGuidePillar("ExitFrameLeft", GetRoomCenterWorld(exitRoom, width, height) + new Vector3(-cellSize * 1.3f, 0f, 0f), 2.3f, new Color(0.42f, 0.88f, 0.96f));
+            CreateGuidePillar("ExitFrameRight", GetRoomCenterWorld(exitRoom, width, height) + new Vector3(cellSize * 1.3f, 0f, 0f), 2.3f, new Color(0.42f, 0.88f, 0.96f));
+
+            for (int index = 0; index < combatRooms.Count; index++)
+            {
+                Vector3 roomCenter = GetRoomCenterWorld(combatRooms[index], width, height);
+                CreateRoomPad($"CombatPad_{index}", roomCenter, new Vector3(cellSize * 2.8f, 0.12f, cellSize * 2.2f), new Color(0.3f, 0.28f, 0.16f));
+                CreateCoverBlock($"CombatCoverA_{index}", roomCenter + new Vector3(cellSize * 0.9f, 0f, cellSize * 0.4f), new Vector3(cellSize * 0.75f, 1.3f, cellSize * 0.75f), new Color(0.42f, 0.42f, 0.38f));
+                CreateCoverBlock($"CombatCoverB_{index}", roomCenter + new Vector3(-cellSize * 0.9f, 0f, -cellSize * 0.4f), new Vector3(cellSize * 0.75f, 1.3f, cellSize * 0.75f), new Color(0.42f, 0.42f, 0.38f));
+            }
+        }
+
+        private void CreateRoomPad(string name, Vector3 position, Vector3 scale, Color color)
+        {
+            GameObject pad = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            pad.name = name;
+            pad.transform.SetParent(generatedRoot, false);
+            pad.transform.position = position + Vector3.up * 0.08f;
+            pad.transform.localScale = scale;
+            pad.GetComponent<Renderer>().material.color = color;
+        }
+
+        private void CreateGuidePillar(string name, Vector3 position, float height, Color color)
+        {
+            GameObject pillar = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            pillar.name = name;
+            pillar.transform.SetParent(generatedRoot, false);
+            pillar.transform.position = position + Vector3.up * (height * 0.5f);
+            pillar.transform.localScale = new Vector3(cellSize * 0.16f, height * 0.5f, cellSize * 0.16f);
+            pillar.GetComponent<Renderer>().material.color = color;
+        }
+
+        private void CreateCoverBlock(string name, Vector3 position, Vector3 scale, Color color)
+        {
+            GameObject block = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            block.name = name;
+            block.transform.SetParent(generatedRoot, false);
+            block.transform.position = position + Vector3.up * (scale.y * 0.5f);
+            block.transform.localScale = scale;
+            block.GetComponent<Renderer>().material.color = color;
+        }
+
+        private Vector3 GetRoomCenterWorld(RectInt room, int width, int height)
+        {
+            return CellToWorld(GetRoomCenterCell(room), width, height);
+        }
+
+        private static Vector2Int GetRoomCenterCell(RectInt room)
+        {
+            return new Vector2Int(room.xMin + room.width / 2, room.yMin + room.height / 2);
         }
 
         private Vector3 CellToWorld(Vector2Int cell, int width, int height)
@@ -331,6 +450,59 @@ namespace Tanks.Level
             }
 
             return distances;
+        }
+
+        private static bool TryAddSpawnNearAnchor(
+            List<Vector2Int> walkableCells,
+            List<Vector2Int> chosenCells,
+            Vector2Int playerCell,
+            Vector2Int anchor,
+            int minimumSpacing,
+            int maxAnchorDistance,
+            int minimumDistanceFromPlayer)
+        {
+            Vector2Int bestCell = default;
+            int bestAnchorDistance = int.MaxValue;
+            bool found = false;
+
+            for (int index = 0; index < walkableCells.Count; index++)
+            {
+                Vector2Int candidate = walkableCells[index];
+                if (candidate == playerCell || chosenCells.Contains(candidate))
+                {
+                    continue;
+                }
+
+                int anchorDistance = Mathf.Abs(candidate.x - anchor.x) + Mathf.Abs(candidate.y - anchor.y);
+                int playerDistance = Mathf.Abs(candidate.x - playerCell.x) + Mathf.Abs(candidate.y - playerCell.y);
+
+                if (anchorDistance > maxAnchorDistance || playerDistance < minimumDistanceFromPlayer)
+                {
+                    continue;
+                }
+
+                if (!IsFarEnoughFromChosen(candidate, chosenCells, minimumSpacing))
+                {
+                    continue;
+                }
+
+                if (anchorDistance >= bestAnchorDistance)
+                {
+                    continue;
+                }
+
+                bestCell = candidate;
+                bestAnchorDistance = anchorDistance;
+                found = true;
+            }
+
+            if (!found)
+            {
+                return false;
+            }
+
+            chosenCells.Add(bestCell);
+            return true;
         }
 
         private static bool IsFarEnoughFromChosen(Vector2Int candidate, List<Vector2Int> chosenCells, int minimumDistance)
