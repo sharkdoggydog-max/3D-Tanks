@@ -15,6 +15,7 @@ namespace Tanks.Level
         private bool isInitialized;
         private bool isAdvancingLevel;
         private bool objectiveComplete;
+        private bool isRestarting;
         private float nextLevelLoadTime;
         private GameObject currentPlayerTank;
         private PrototypeLevelBuilder levelBuilder;
@@ -64,7 +65,7 @@ namespace Tanks.Level
                 keyboard != null &&
                 keyboard.rKey.wasPressedThisFrame)
             {
-                SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+                RestartRun();
             }
 
             if (isAdvancingLevel && Time.time >= nextLevelLoadTime)
@@ -100,6 +101,17 @@ namespace Tanks.Level
             EnsureLevelBuilder();
             EnsureHud();
             LoadCurrentLevel();
+        }
+
+        public void RestartRun()
+        {
+            if (isRestarting)
+            {
+                return;
+            }
+
+            isRestarting = true;
+            SceneManager.LoadScene(SceneManager.GetActiveScene().name);
         }
 
         private void LoadCurrentLevel()
@@ -370,7 +382,7 @@ namespace Tanks.Level
             primitive.transform.SetParent(parent, false);
             primitive.transform.localPosition = localPosition;
             primitive.transform.localScale = localScale;
-            primitive.GetComponent<Renderer>().material.color = color;
+            CombatVisualPalette.ApplyRuntimeMaterial(primitive.GetComponent<Renderer>(), color);
             return primitive;
         }
 
@@ -384,6 +396,13 @@ namespace Tanks.Level
                 mainCamera = cameraObject.AddComponent<Camera>();
                 cameraObject.AddComponent<AudioListener>();
             }
+
+            mainCamera.orthographic = false;
+            mainCamera.nearClipPlane = 0.1f;
+            mainCamera.farClipPlane = 350f;
+            mainCamera.clearFlags = CameraClearFlags.SolidColor;
+            mainCamera.backgroundColor = new Color(0.11f, 0.13f, 0.16f);
+            mainCamera.fieldOfView = Application.isMobilePlatform ? 62f : 60f;
 
             CameraFollow follow = mainCamera.GetComponent<CameraFollow>();
             if (follow == null)
@@ -610,7 +629,7 @@ namespace Tanks.Level
 
             for (int index = 0; index < indicatorRenderers.Length; index++)
             {
-                indicatorRenderers[index].material.color = frameColor;
+                CombatVisualPalette.SetRuntimeMaterialColor(indicatorRenderers[index], frameColor);
             }
         }
 

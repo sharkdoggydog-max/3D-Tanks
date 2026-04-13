@@ -44,6 +44,7 @@ namespace Tanks.Combat
             velocity = drift;
 
             transform.localScale = startScale;
+            CombatVisualPalette.ApplyRuntimeMaterial(effectRenderer, color, transparent: true);
             ApplyColor(color, 0.9f);
         }
 
@@ -95,7 +96,7 @@ namespace Tanks.Combat
 
             Color tintedColor = color;
             tintedColor.a = alpha;
-            effectRenderer.material.color = tintedColor;
+            CombatVisualPalette.SetRuntimeMaterialColor(effectRenderer, tintedColor);
         }
     }
 }

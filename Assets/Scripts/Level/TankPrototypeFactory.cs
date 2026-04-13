@@ -353,7 +353,7 @@ namespace Tanks.Level
             cube.transform.SetParent(parent, false);
             cube.transform.localPosition = localPosition;
             cube.transform.localScale = localScale;
-            cube.GetComponent<Renderer>().material.color = color;
+            CombatVisualPalette.ApplyRuntimeMaterial(cube.GetComponent<Renderer>(), color);
 
             if (!keepCollider)
             {
@@ -376,7 +376,7 @@ namespace Tanks.Level
             cylinder.transform.SetParent(parent, false);
             cylinder.transform.localPosition = localPosition;
             cylinder.transform.localScale = localScale;
-            cylinder.GetComponent<Renderer>().material.color = color;
+            CombatVisualPalette.ApplyRuntimeMaterial(cylinder.GetComponent<Renderer>(), color);
 
             if (!keepCollider)
             {

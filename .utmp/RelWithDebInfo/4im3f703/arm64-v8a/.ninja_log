@@ -1,0 +1,10 @@
+# ninja log v5
+72	6173	7978087851982186	GameActivity/CMakeFiles/game.dir/UGAInputKeyEvent.cpp.o	6629b844b2a6e7b8
+84	6261	7978087852793130	GameActivity/CMakeFiles/game.dir/UGAInputMotionEvent.cpp.o	95529ba326996fbf
+12	6265	7978087852696149	GameActivity/CMakeFiles/game.dir/UGAConfiguration.cpp.o	89b694e851eda7ed
+37	6289	7978087852980232	GameActivity/CMakeFiles/game.dir/UGAEntry.cpp.o	ca09c6360dc4fd27
+1	6508	7978087855329960	GameActivity/CMakeFiles/game.dir/UGADebug.cpp.o	f1bbcb166ffbe519
+52	6934	7978087859744014	GameActivity/CMakeFiles/game.dir/UGAInput.cpp.o	dcc03273ea3012d9
+97	6958	7978087859998265	GameActivity/CMakeFiles/game.dir/UGASoftKeyboard.cpp.o	6d5cf2e035ab7526
+24	7077	7978087861128900	GameActivity/CMakeFiles/game.dir/UGAApplication.cpp.o	6bf782189884b5bf
+7077	7285	7978087863281952	C:/Users/user/3D Tanks/Library/Bee/Android/Prj/IL2CPP/Gradle/unityLibrary/build/intermediates/cxx/RelWithDebInfo/4im3f703/obj/arm64-v8a/libgame.so	a4afcc8b18596376

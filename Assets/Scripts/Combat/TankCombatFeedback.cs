@@ -57,7 +57,9 @@ namespace Tanks.Combat
 
             for (int index = 0; index < cachedRenderers.Length; index++)
             {
-                cachedRenderers[index].material.color = Color.Lerp(baseColors[index], flashColor, flashStrength);
+                CombatVisualPalette.SetRuntimeMaterialColor(
+                    cachedRenderers[index],
+                    Color.Lerp(baseColors[index], flashColor, flashStrength));
             }
         }
 

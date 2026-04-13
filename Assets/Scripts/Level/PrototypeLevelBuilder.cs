@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Tanks.Combat;
 using UnityEngine;
 
 namespace Tanks.Level
@@ -234,7 +235,7 @@ namespace Tanks.Level
             floor.transform.SetParent(generatedRoot, false);
             floor.transform.localScale = new Vector3(width * cellSize, 1f, height * cellSize);
             floor.transform.position = new Vector3(0f, -0.5f, 0f);
-            floor.GetComponent<Renderer>().material.color = new Color(0.22f, 0.25f, 0.2f);
+            CombatVisualPalette.ApplyRuntimeMaterial(floor.GetComponent<Renderer>(), new Color(0.22f, 0.25f, 0.2f));
         }
 
         private void CreateMazeWalls(bool[,] walls, int width, int height)
@@ -260,7 +261,7 @@ namespace Tanks.Level
             wall.transform.SetParent(generatedRoot, false);
             wall.transform.position = position + Vector3.up * (wallHeight * 0.5f);
             wall.transform.localScale = new Vector3(cellSize, wallHeight, cellSize);
-            wall.GetComponent<Renderer>().material.color = new Color(0.45f, 0.47f, 0.5f);
+            CombatVisualPalette.ApplyRuntimeMaterial(wall.GetComponent<Renderer>(), new Color(0.45f, 0.47f, 0.5f));
         }
 
         private void CreateRoomPurposeProps(int width, int height)
@@ -295,7 +296,7 @@ namespace Tanks.Level
             pad.transform.SetParent(generatedRoot, false);
             pad.transform.position = position + Vector3.up * 0.08f;
             pad.transform.localScale = scale;
-            pad.GetComponent<Renderer>().material.color = color;
+            CombatVisualPalette.ApplyRuntimeMaterial(pad.GetComponent<Renderer>(), color);
         }
 
         private void CreateGuidePillar(string name, Vector3 position, float height, Color color)
@@ -305,7 +306,7 @@ namespace Tanks.Level
             pillar.transform.SetParent(generatedRoot, false);
             pillar.transform.position = position + Vector3.up * (height * 0.5f);
             pillar.transform.localScale = new Vector3(cellSize * 0.16f, height * 0.5f, cellSize * 0.16f);
-            pillar.GetComponent<Renderer>().material.color = color;
+            CombatVisualPalette.ApplyRuntimeMaterial(pillar.GetComponent<Renderer>(), color);
         }
 
         private void CreateCoverBlock(string name, Vector3 position, Vector3 scale, Color color)
@@ -315,7 +316,7 @@ namespace Tanks.Level
             block.transform.SetParent(generatedRoot, false);
             block.transform.position = position + Vector3.up * (scale.y * 0.5f);
             block.transform.localScale = scale;
-            block.GetComponent<Renderer>().material.color = color;
+            CombatVisualPalette.ApplyRuntimeMaterial(block.GetComponent<Renderer>(), color);
         }
 
         private Vector3 GetRoomCenterWorld(RectInt room, int width, int height)

@@ -177,7 +177,7 @@ namespace Tanks.Combat
                 return;
             }
 
-            projectileRenderer.material.color = CombatVisualPalette.GetProjectileColor(projectileStyle, owningTeam);
+            CombatVisualPalette.ApplyRuntimeMaterial(projectileRenderer, CombatVisualPalette.GetProjectileColor(projectileStyle, owningTeam));
         }
 
         private void SpawnImpactEffect(Vector3 position, Team impactedTeam, bool directHit)

@@ -1,5 +1,6 @@
 using Tanks.Combat;
 using Tanks.Core;
+using Tanks.UI;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -17,6 +18,7 @@ namespace Tanks.Player
         private TankWeapon tankWeapon;
         private TankTurretAim turretAim;
         private Health health;
+        private MobileTouchControls mobileControls;
         private float moveInput;
         private float turnInput;
         private bool fireHeld;
@@ -30,6 +32,7 @@ namespace Tanks.Player
             tankWeapon = GetComponent<TankWeapon>();
             turretAim = GetComponent<TankTurretAim>();
             health = GetComponent<Health>();
+            mobileControls = FindAnyObjectByType<MobileTouchControls>();
         }
 
         private void Update()
@@ -45,6 +48,10 @@ namespace Tanks.Player
 
             Keyboard keyboard = Keyboard.current;
             Mouse mouse = Mouse.current;
+            if (mobileControls == null)
+            {
+                mobileControls = FindAnyObjectByType<MobileTouchControls>();
+            }
 
             moveInput = 0f;
             turnInput = 0f;
@@ -74,6 +81,14 @@ namespace Tanks.Player
 
             fireHeld = (keyboard != null && keyboard.spaceKey.isPressed) ||
                        (mouse != null && mouse.leftButton.isPressed);
+
+            if (mobileControls != null && mobileControls.UseMobileControls)
+            {
+                Vector2 movementVector = mobileControls.MovementVector;
+                moveInput = movementVector.y;
+                turnInput = movementVector.x;
+                fireHeld = fireHeld || mobileControls.FireHeld;
+            }
 
             UpdateTurretAim(mouse);
         }
@@ -117,6 +132,16 @@ namespace Tanks.Player
         {
             if (turretAim == null)
             {
+                return;
+            }
+
+            if (mobileControls != null &&
+                mobileControls.UseMobileControls &&
+                mobileControls.TryGetAimPoint(transform, out Vector3 mobileAimPoint))
+            {
+                HasAimPoint = true;
+                CurrentAimPoint = mobileAimPoint;
+                turretAim.AimAtWorldPoint(mobileAimPoint);
                 return;
             }
 

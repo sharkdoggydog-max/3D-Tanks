@@ -85,7 +85,7 @@ namespace Tanks.Enemy
             part.transform.SetParent(parent, false);
             part.transform.localPosition = localPosition;
             part.transform.localScale = localScale;
-            part.GetComponent<Renderer>().material.color = color;
+            CombatVisualPalette.ApplyRuntimeMaterial(part.GetComponent<Renderer>(), color, transparent: color.a < 0.999f);
             Object.Destroy(part.GetComponent<Collider>());
             return part.transform;
         }

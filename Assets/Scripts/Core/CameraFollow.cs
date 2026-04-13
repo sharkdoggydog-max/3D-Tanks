@@ -13,6 +13,10 @@ namespace Tanks.Core
         [SerializeField] private float rotationSmoothSpeed = 10f;
         [SerializeField] private float collisionProbeRadius = 0.35f;
         [SerializeField] private float minFollowDistance = 3f;
+        [SerializeField] private float mobileFollowDistance = 7.2f;
+        [SerializeField] private float mobileFollowHeight = 4.25f;
+        [SerializeField] private float mobileLookAheadDistance = 6.6f;
+        [SerializeField] private float mobileLookHeight = 1.85f;
 
         private Vector3 velocity;
         private Quaternion currentRotation;
@@ -48,8 +52,9 @@ namespace Tanks.Core
 
         private Vector3 GetResolvedCameraPosition()
         {
-            Vector3 focusPoint = target.position + Vector3.up * lookHeight;
-            Vector3 desiredPosition = focusPoint - target.forward * followDistance + Vector3.up * (followHeight - lookHeight);
+            float activeLookHeight = GetLookHeight();
+            Vector3 focusPoint = target.position + Vector3.up * activeLookHeight;
+            Vector3 desiredPosition = focusPoint - target.forward * GetFollowDistance() + Vector3.up * (GetFollowHeight() - activeLookHeight);
             Vector3 rayDirection = desiredPosition - focusPoint;
             float rayDistance = rayDirection.magnitude;
 
@@ -80,7 +85,7 @@ namespace Tanks.Core
 
         private Quaternion GetDesiredRotation(Vector3 cameraPosition)
         {
-            Vector3 lookTarget = target.position + Vector3.up * lookHeight + target.forward * lookAheadDistance;
+            Vector3 lookTarget = target.position + Vector3.up * GetLookHeight() + target.forward * GetLookAheadDistance();
             Vector3 lookDirection = lookTarget - cameraPosition;
             if (lookDirection.sqrMagnitude < 0.001f)
             {
@@ -88,6 +93,31 @@ namespace Tanks.Core
             }
 
             return Quaternion.LookRotation(lookDirection.normalized, Vector3.up);
+        }
+
+        private float GetFollowDistance()
+        {
+            return IsMobileCameraProfile() ? mobileFollowDistance : followDistance;
+        }
+
+        private float GetFollowHeight()
+        {
+            return IsMobileCameraProfile() ? mobileFollowHeight : followHeight;
+        }
+
+        private float GetLookAheadDistance()
+        {
+            return IsMobileCameraProfile() ? mobileLookAheadDistance : lookAheadDistance;
+        }
+
+        private float GetLookHeight()
+        {
+            return IsMobileCameraProfile() ? mobileLookHeight : lookHeight;
+        }
+
+        private static bool IsMobileCameraProfile()
+        {
+            return Application.isMobilePlatform;
         }
     }
 }

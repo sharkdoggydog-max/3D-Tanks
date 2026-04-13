@@ -1,4 +1,5 @@
 using UnityEngine;
+using Tanks.Combat;
 
 namespace Tanks.Player
 {
@@ -57,7 +58,7 @@ namespace Tanks.Player
             part.transform.SetParent(markerRoot, false);
             part.transform.localPosition = localPosition;
             part.transform.localScale = localScale;
-            part.GetComponent<Renderer>().material.color = color;
+            CombatVisualPalette.ApplyRuntimeMaterial(part.GetComponent<Renderer>(), color, transparent: color.a < 0.999f);
             Destroy(part.GetComponent<Collider>());
             return part.transform;
         }
