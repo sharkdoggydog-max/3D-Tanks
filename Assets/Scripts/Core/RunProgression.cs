@@ -1,3 +1,4 @@
+using Tanks.Enemy;
 using UnityEngine;
 
 namespace Tanks.Core
@@ -5,6 +6,7 @@ namespace Tanks.Core
     public class RunProgression
     {
         private const float BasePlayerMaxHealth = 5f;
+        private const float MobilePlayerHealthBonus = 2f;
         private const float BaseWeaponCooldown = 0.3f;
         private const float BaseProjectileSpeed = 28f;
         private const float BaseProjectileLifetime = 2.4f;
@@ -14,6 +16,7 @@ namespace Tanks.Core
         public int HullUpgrades { get; private set; }
         public int LoaderUpgrades { get; private set; }
         public int CannonUpgrades { get; private set; }
+        public EnemyVariant SelectedPlayerTank { get; private set; } = EnemyVariant.Basic;
         public string LastUpgradeSummary { get; private set; } = "Base loadout ready.";
 
         public float PlayerMaxHealth => BasePlayerMaxHealth + HullUpgrades;
@@ -22,6 +25,17 @@ namespace Tanks.Core
         public float PlayerProjectileLifetime => BaseProjectileLifetime + CannonUpgrades * 0.2f;
         public float PlayerProjectileRadius => BaseProjectileRadius;
         public string UpgradeStatus => $"Hull +{HullUpgrades} | Loader +{LoaderUpgrades} | Cannon +{CannonUpgrades}";
+
+        public float GetPlayerMaxHealth(float baseMaxHealth, bool useMobileStartingHealth)
+        {
+            float currentMaxHealth = Mathf.Max(1f, baseMaxHealth) + HullUpgrades;
+            return useMobileStartingHealth ? currentMaxHealth + MobilePlayerHealthBonus : currentMaxHealth;
+        }
+
+        public void SelectPlayerTank(EnemyVariant tankType)
+        {
+            SelectedPlayerTank = tankType;
+        }
 
         public void Reset()
         {

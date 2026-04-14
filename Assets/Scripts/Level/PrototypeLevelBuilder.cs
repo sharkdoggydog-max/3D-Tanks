@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Tanks.Core;
 using UnityEngine;
 
 namespace Tanks.Level
@@ -229,12 +230,14 @@ namespace Tanks.Level
 
         private void CreateFloor(int width, int height)
         {
-            GameObject floor = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            floor.name = "Floor";
-            floor.transform.SetParent(generatedRoot, false);
-            floor.transform.localScale = new Vector3(width * cellSize, 1f, height * cellSize);
+            GameObject floor = RuntimePrimitiveVisuals.CreatePrimitive(
+                PrimitiveType.Cube,
+                "Floor",
+                generatedRoot,
+                new Vector3(0f, -0.5f, 0f),
+                new Vector3(width * cellSize, 1f, height * cellSize),
+                new Color(0.22f, 0.25f, 0.2f));
             floor.transform.position = new Vector3(0f, -0.5f, 0f);
-            floor.GetComponent<Renderer>().material.color = new Color(0.22f, 0.25f, 0.2f);
         }
 
         private void CreateMazeWalls(bool[,] walls, int width, int height)
@@ -255,12 +258,14 @@ namespace Tanks.Level
 
         private void CreateWall(Vector3 position)
         {
-            GameObject wall = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            wall.name = "Wall";
-            wall.transform.SetParent(generatedRoot, false);
+            GameObject wall = RuntimePrimitiveVisuals.CreatePrimitive(
+                PrimitiveType.Cube,
+                "Wall",
+                generatedRoot,
+                position + Vector3.up * (wallHeight * 0.5f),
+                new Vector3(cellSize, wallHeight, cellSize),
+                new Color(0.45f, 0.47f, 0.5f));
             wall.transform.position = position + Vector3.up * (wallHeight * 0.5f);
-            wall.transform.localScale = new Vector3(cellSize, wallHeight, cellSize);
-            wall.GetComponent<Renderer>().material.color = new Color(0.45f, 0.47f, 0.5f);
         }
 
         private void CreateRoomPurposeProps(int width, int height)
@@ -290,32 +295,38 @@ namespace Tanks.Level
 
         private void CreateRoomPad(string name, Vector3 position, Vector3 scale, Color color)
         {
-            GameObject pad = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            pad.name = name;
-            pad.transform.SetParent(generatedRoot, false);
+            GameObject pad = RuntimePrimitiveVisuals.CreatePrimitive(
+                PrimitiveType.Cube,
+                name,
+                generatedRoot,
+                position + Vector3.up * 0.08f,
+                scale,
+                color);
             pad.transform.position = position + Vector3.up * 0.08f;
-            pad.transform.localScale = scale;
-            pad.GetComponent<Renderer>().material.color = color;
         }
 
         private void CreateGuidePillar(string name, Vector3 position, float height, Color color)
         {
-            GameObject pillar = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            pillar.name = name;
-            pillar.transform.SetParent(generatedRoot, false);
+            GameObject pillar = RuntimePrimitiveVisuals.CreatePrimitive(
+                PrimitiveType.Cylinder,
+                name,
+                generatedRoot,
+                position + Vector3.up * (height * 0.5f),
+                new Vector3(cellSize * 0.16f, height * 0.5f, cellSize * 0.16f),
+                color);
             pillar.transform.position = position + Vector3.up * (height * 0.5f);
-            pillar.transform.localScale = new Vector3(cellSize * 0.16f, height * 0.5f, cellSize * 0.16f);
-            pillar.GetComponent<Renderer>().material.color = color;
         }
 
         private void CreateCoverBlock(string name, Vector3 position, Vector3 scale, Color color)
         {
-            GameObject block = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            block.name = name;
-            block.transform.SetParent(generatedRoot, false);
+            GameObject block = RuntimePrimitiveVisuals.CreatePrimitive(
+                PrimitiveType.Cube,
+                name,
+                generatedRoot,
+                position + Vector3.up * (scale.y * 0.5f),
+                scale,
+                color);
             block.transform.position = position + Vector3.up * (scale.y * 0.5f);
-            block.transform.localScale = scale;
-            block.GetComponent<Renderer>().material.color = color;
         }
 
         private Vector3 GetRoomCenterWorld(RectInt room, int width, int height)

@@ -1,3 +1,4 @@
+using Tanks.Core;
 using UnityEngine;
 
 namespace Tanks.Combat
@@ -71,16 +72,16 @@ namespace Tanks.Combat
             Vector3 end,
             Vector3 drift)
         {
-            GameObject effectObject = GameObject.CreatePrimitive(primitiveType);
-            effectObject.name = $"{primitiveType}Effect";
+            GameObject effectObject = RuntimePrimitiveVisuals.CreatePrimitive(
+                primitiveType,
+                $"{primitiveType}Effect",
+                null,
+                position,
+                Vector3.one,
+                color,
+                RuntimeMaterialKind.Transparent,
+                keepCollider: false);
             effectObject.transform.position = position;
-
-            Collider collider = effectObject.GetComponent<Collider>();
-            if (collider != null)
-            {
-                collider.enabled = false;
-                Destroy(collider);
-            }
 
             SimpleLifetimeEffect effect = effectObject.AddComponent<SimpleLifetimeEffect>();
             effect.Configure(color, life, start, end, drift);
@@ -95,7 +96,7 @@ namespace Tanks.Combat
 
             Color tintedColor = color;
             tintedColor.a = alpha;
-            effectRenderer.material.color = tintedColor;
+            RuntimePrimitiveVisuals.SetColor(effectRenderer, tintedColor);
         }
     }
 }

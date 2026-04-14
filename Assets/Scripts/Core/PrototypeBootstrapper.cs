@@ -8,7 +8,7 @@ namespace Tanks.Core
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Bootstrap()
         {
-            GameManager gameManager = Object.FindFirstObjectByType<GameManager>();
+            GameManager gameManager = Object.FindAnyObjectByType<GameManager>();
             if (gameManager == null)
             {
                 GameObject root = new("GameRoot");
@@ -17,7 +17,7 @@ namespace Tanks.Core
                 return;
             }
 
-            if (Object.FindFirstObjectByType<LevelManager>() == null)
+            if (Object.FindAnyObjectByType<LevelManager>() == null)
             {
                 gameManager.gameObject.AddComponent<LevelManager>();
             }

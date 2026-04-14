@@ -6,7 +6,6 @@ using Tanks.Player;
 using Tanks.UI;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using UnityEngine.SceneManagement;
 
 namespace Tanks.Level
 {
@@ -25,6 +24,7 @@ namespace Tanks.Level
 
         public string ObjectiveText => objectiveComplete ? "Reach the Exit Gate" : "Destroy the Command Node";
         public string ExitStatusText => objectiveComplete ? "Exit: Unlocked" : "Exit: Locked";
+        public EnemyVariant SelectedPlayerTank => gameManager != null ? gameManager.Progression.SelectedPlayerTank : EnemyVariant.Basic;
 
         public string ObjectiveProgressText
         {
@@ -64,7 +64,7 @@ namespace Tanks.Level
                 keyboard != null &&
                 keyboard.rKey.wasPressedThisFrame)
             {
-                SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+                RestartCurrentRun();
             }
 
             if (isAdvancingLevel && Time.time >= nextLevelLoadTime)
@@ -95,11 +95,74 @@ namespace Tanks.Level
             isInitialized = true;
             gameManager = GameManager.Instance != null ? GameManager.Instance : gameObject.AddComponent<GameManager>();
             gameManager.StateChanged += OnGameStateChanged;
-            gameManager.ResetRun();
 
             EnsureLevelBuilder();
             EnsureHud();
+            ShowMainMenu();
+        }
+
+        public void StartSelectedTankRun(EnemyVariant tankType)
+        {
+            if (!isInitialized)
+            {
+                InitializeRun();
+            }
+
+            if (gameManager == null)
+            {
+                gameManager = GameManager.Instance != null ? GameManager.Instance : GetComponent<GameManager>();
+            }
+
+            if (gameManager == null)
+            {
+                Debug.LogWarning("[LevelManager] Unable to start run because GameManager was not found.");
+                return;
+            }
+
+            isAdvancingLevel = false;
+            gameManager.Progression.SelectPlayerTank(tankType);
+            gameManager.ResetRun();
             LoadCurrentLevel();
+        }
+
+        public void RestartCurrentRun()
+        {
+            isAdvancingLevel = false;
+
+            if (!isInitialized)
+            {
+                InitializeRun();
+                return;
+            }
+
+            if (gameManager == null)
+            {
+                gameManager = GameManager.Instance != null ? GameManager.Instance : GetComponent<GameManager>();
+            }
+
+            if (gameManager == null)
+            {
+                Debug.LogWarning("[LevelManager] Restart requested without an active GameManager. Reinitializing run.");
+                isInitialized = false;
+                InitializeRun();
+                return;
+            }
+
+            gameManager.ResetRun();
+            LoadCurrentLevel();
+        }
+
+        private void ShowMainMenu()
+        {
+            isAdvancingLevel = false;
+            objectiveComplete = false;
+            ClearCurrentLevel();
+
+            if (gameManager != null)
+            {
+                gameManager.ClearEnemies();
+                gameManager.EnterMainMenu();
+            }
         }
 
         private void LoadCurrentLevel()
@@ -137,29 +200,44 @@ namespace Tanks.Level
 
         private GameObject CreatePlayer(Vector3 spawnPosition)
         {
+            PlayerTankPreset preset = GetPlayerTankPreset();
             GameObject playerTank = TankPrototypeFactory.CreateTank(
-                "PlayerTank",
-                new Color(0.18f, 0.6f, 0.22f),
+                $"Player{preset.DisplayName}",
+                preset.BodyColor,
                 spawnPosition,
                 Quaternion.identity,
-                new Color(0.82f, 1f, 0.82f));
+                preset.AccentColor,
+                preset.HullScale,
+                preset.TurretScale,
+                preset.BarrelLengthScale,
+                preset.BarrelThicknessScale,
+                preset.VisualVariant);
             playerTank.transform.SetParent(transform, true);
 
             Health health = playerTank.GetComponent<Health>();
-            health.Configure(gameManager.Progression.PlayerMaxHealth, Team.Player, false);
+            health.Configure(
+                gameManager.Progression.GetPlayerMaxHealth(preset.BaseMaxHealth, MobileControlLayout.ShouldUseTouchControls()),
+                Team.Player,
+                false);
 
             TankWeapon weapon = playerTank.GetComponent<TankWeapon>();
             weapon.Configure(
-                gameManager.Progression.PlayerWeaponCooldown,
-                gameManager.Progression.PlayerProjectileSpeed,
-                1f,
-                gameManager.Progression.PlayerProjectileLifetime,
-                gameManager.Progression.PlayerProjectileRadius);
+                gameManager.Progression.PlayerWeaponCooldown * preset.WeaponCooldownMultiplier,
+                gameManager.Progression.PlayerProjectileSpeed * preset.ProjectileSpeedMultiplier,
+                preset.ProjectileDamage,
+                gameManager.Progression.PlayerProjectileLifetime * preset.ProjectileLifetimeMultiplier,
+                Mathf.Max(0.18f, gameManager.Progression.PlayerProjectileRadius + preset.ProjectileRadiusOffset));
             weapon.ConfigureProjectileStyle(ProjectileStyle.Player);
 
             PlayerTankController controller = playerTank.AddComponent<PlayerTankController>();
-            controller.Configure(8f, 140f);
+            controller.Configure(preset.MoveSpeed, preset.TurnSpeed);
             playerTank.AddComponent<PlayerAimIndicator>();
+
+            TankTurretAim turretAim = playerTank.GetComponent<TankTurretAim>();
+            if (turretAim != null)
+            {
+                turretAim.Configure(preset.TurretTurnSpeed);
+            }
 
             gameManager.RegisterPlayer(health);
             return playerTank;
@@ -365,13 +443,13 @@ namespace Tanks.Level
             Vector3 localScale,
             Color color)
         {
-            GameObject primitive = GameObject.CreatePrimitive(primitiveType);
-            primitive.name = name;
-            primitive.transform.SetParent(parent, false);
-            primitive.transform.localPosition = localPosition;
-            primitive.transform.localScale = localScale;
-            primitive.GetComponent<Renderer>().material.color = color;
-            return primitive;
+            return RuntimePrimitiveVisuals.CreatePrimitive(
+                primitiveType,
+                name,
+                parent,
+                localPosition,
+                localScale,
+                color);
         }
 
         private void ConfigureCamera(Transform playerTransform)
@@ -409,7 +487,10 @@ namespace Tanks.Level
         private void ClearCurrentLevel()
         {
             UnsubscribeMissionObjects();
-            gameManager.RegisterPlayer(null);
+            if (gameManager != null)
+            {
+                gameManager.RegisterPlayer(null);
+            }
 
             if (currentPlayerTank != null)
             {
@@ -491,7 +572,9 @@ namespace Tanks.Level
             if (newState == GameState.Defeat)
             {
                 isAdvancingLevel = false;
-                gameManager.ShowMessage("Defeat\nPress R to restart", 60f);
+                gameManager.ShowMessage(
+                    MobileControlLayout.ShouldUseTouchControls() ? "Defeat\nTap Restart" : "Defeat\nPress R to restart",
+                    60f);
             }
         }
 
@@ -503,6 +586,128 @@ namespace Tanks.Level
                 EnemyVariant.Bulwark => ProjectileStyle.BulwarkEnemy,
                 _ => ProjectileStyle.BasicEnemy
             };
+        }
+
+        private PlayerTankPreset GetPlayerTankPreset()
+        {
+            return SelectedPlayerTank switch
+            {
+                EnemyVariant.Raider => new PlayerTankPreset(
+                    EnemyVariant.Raider,
+                    "Raider",
+                    new Color(0.14f, 0.55f, 0.46f),
+                    new Color(0.82f, 1f, 0.96f),
+                    0.9f,
+                    0.84f,
+                    1.18f,
+                    0.82f,
+                    4f,
+                    10.2f,
+                    192f,
+                    320f,
+                    0.72f,
+                    1.18f,
+                    0.72f,
+                    -0.08f,
+                    0.88f),
+
+                EnemyVariant.Bulwark => new PlayerTankPreset(
+                    EnemyVariant.Bulwark,
+                    "Bulwark",
+                    new Color(0.24f, 0.42f, 0.28f),
+                    new Color(0.9f, 0.97f, 1f),
+                    1.12f,
+                    1.14f,
+                    0.9f,
+                    1.28f,
+                    8f,
+                    5.8f,
+                    96f,
+                    145f,
+                    1.28f,
+                    0.9f,
+                    1.75f,
+                    0.12f,
+                    1.18f),
+
+                _ => new PlayerTankPreset(
+                    EnemyVariant.Basic,
+                    "Basic",
+                    new Color(0.18f, 0.6f, 0.22f),
+                    new Color(0.82f, 1f, 0.82f),
+                    1f,
+                    1f,
+                    1f,
+                    1f,
+                    5f,
+                    7.8f,
+                    140f,
+                    220f,
+                    1f,
+                    1f,
+                    1f,
+                    0f,
+                    1f)
+            };
+        }
+
+        private readonly struct PlayerTankPreset
+        {
+            public PlayerTankPreset(
+                EnemyVariant visualVariant,
+                string displayName,
+                Color bodyColor,
+                Color accentColor,
+                float hullScale,
+                float turretScale,
+                float barrelLengthScale,
+                float barrelThicknessScale,
+                float baseMaxHealth,
+                float moveSpeed,
+                float turnSpeed,
+                float turretTurnSpeed,
+                float weaponCooldownMultiplier,
+                float projectileSpeedMultiplier,
+                float projectileDamage,
+                float projectileRadiusOffset,
+                float projectileLifetimeMultiplier)
+            {
+                VisualVariant = visualVariant;
+                DisplayName = displayName;
+                BodyColor = bodyColor;
+                AccentColor = accentColor;
+                HullScale = hullScale;
+                TurretScale = turretScale;
+                BarrelLengthScale = barrelLengthScale;
+                BarrelThicknessScale = barrelThicknessScale;
+                BaseMaxHealth = baseMaxHealth;
+                MoveSpeed = moveSpeed;
+                TurnSpeed = turnSpeed;
+                TurretTurnSpeed = turretTurnSpeed;
+                WeaponCooldownMultiplier = weaponCooldownMultiplier;
+                ProjectileSpeedMultiplier = projectileSpeedMultiplier;
+                ProjectileDamage = projectileDamage;
+                ProjectileRadiusOffset = projectileRadiusOffset;
+                ProjectileLifetimeMultiplier = projectileLifetimeMultiplier;
+            }
+
+            public EnemyVariant VisualVariant { get; }
+            public string DisplayName { get; }
+            public Color BodyColor { get; }
+            public Color AccentColor { get; }
+            public float HullScale { get; }
+            public float TurretScale { get; }
+            public float BarrelLengthScale { get; }
+            public float BarrelThicknessScale { get; }
+            public float BaseMaxHealth { get; }
+            public float MoveSpeed { get; }
+            public float TurnSpeed { get; }
+            public float TurretTurnSpeed { get; }
+            public float WeaponCooldownMultiplier { get; }
+            public float ProjectileSpeedMultiplier { get; }
+            public float ProjectileDamage { get; }
+            public float ProjectileRadiusOffset { get; }
+            public float ProjectileLifetimeMultiplier { get; }
         }
     }
 
@@ -610,7 +815,7 @@ namespace Tanks.Level
 
             for (int index = 0; index < indicatorRenderers.Length; index++)
             {
-                indicatorRenderers[index].material.color = frameColor;
+                RuntimePrimitiveVisuals.SetColor(indicatorRenderers[index], frameColor);
             }
         }
 

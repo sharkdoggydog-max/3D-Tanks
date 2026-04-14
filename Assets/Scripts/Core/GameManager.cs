@@ -8,9 +8,10 @@ namespace Tanks.Core
     public enum GameState
     {
         Booting = 0,
-        Playing = 1,
-        Victory = 2,
-        Defeat = 3
+        MainMenu = 1,
+        Playing = 2,
+        Victory = 3,
+        Defeat = 4
     }
 
     public class GameManager : MonoBehaviour
@@ -73,8 +74,17 @@ namespace Tanks.Core
 
         public void ResetRun()
         {
+            SetState(GameState.Booting);
             progression.Reset();
             ShowMessage($"Level {CurrentLevel}\n{progression.LastUpgradeSummary}", 2.5f);
+        }
+
+        public void EnterMainMenu()
+        {
+            ClearEnemies();
+            RegisterPlayer(null);
+            ClearMessage();
+            SetState(GameState.MainMenu);
         }
 
         public void AdvanceToNextLevel()
@@ -87,6 +97,12 @@ namespace Tanks.Core
         {
             activeMessage = message;
             messageExpiresAt = Time.time + duration;
+        }
+
+        public void ClearMessage()
+        {
+            activeMessage = string.Empty;
+            messageExpiresAt = 0f;
         }
 
         public void ClearEnemies()

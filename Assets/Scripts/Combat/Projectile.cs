@@ -1,3 +1,4 @@
+using Tanks.Core;
 using UnityEngine;
 
 namespace Tanks.Combat
@@ -34,8 +35,14 @@ namespace Tanks.Combat
             Team team,
             GameObject ownerObject)
         {
-            GameObject projectileObject = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            projectileObject.name = "Projectile";
+            GameObject projectileObject = RuntimePrimitiveVisuals.CreatePrimitive(
+                PrimitiveType.Sphere,
+                "Projectile",
+                null,
+                position,
+                Vector3.one,
+                CombatVisualPalette.GetProjectileColor(style, team),
+                RuntimeMaterialKind.Opaque);
             projectileObject.transform.SetPositionAndRotation(position, rotation);
 
             Projectile projectile = projectileObject.AddComponent<Projectile>();
@@ -177,7 +184,7 @@ namespace Tanks.Combat
                 return;
             }
 
-            projectileRenderer.material.color = CombatVisualPalette.GetProjectileColor(projectileStyle, owningTeam);
+            RuntimePrimitiveVisuals.SetColor(projectileRenderer, CombatVisualPalette.GetProjectileColor(projectileStyle, owningTeam));
         }
 
         private void SpawnImpactEffect(Vector3 position, Team impactedTeam, bool directHit)

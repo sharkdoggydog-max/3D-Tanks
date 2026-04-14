@@ -1,4 +1,5 @@
 using Tanks.Combat;
+using Tanks.Core;
 using UnityEngine;
 
 namespace Tanks.Enemy
@@ -80,13 +81,15 @@ namespace Tanks.Enemy
 
         private static Transform CreateBarPart(string name, Transform parent, Vector3 localPosition, Vector3 localScale, Color color)
         {
-            GameObject part = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            part.name = name;
-            part.transform.SetParent(parent, false);
-            part.transform.localPosition = localPosition;
-            part.transform.localScale = localScale;
-            part.GetComponent<Renderer>().material.color = color;
-            Object.Destroy(part.GetComponent<Collider>());
+            GameObject part = RuntimePrimitiveVisuals.CreatePrimitive(
+                PrimitiveType.Cube,
+                name,
+                parent,
+                localPosition,
+                localScale,
+                color,
+                RuntimeMaterialKind.Transparent,
+                keepCollider: false);
             return part.transform;
         }
 

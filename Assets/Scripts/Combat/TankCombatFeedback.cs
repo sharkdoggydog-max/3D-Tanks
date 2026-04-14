@@ -1,3 +1,4 @@
+using Tanks.Core;
 using UnityEngine;
 
 namespace Tanks.Combat
@@ -26,7 +27,7 @@ namespace Tanks.Combat
 
             for (int index = 0; index < cachedRenderers.Length; index++)
             {
-                baseColors[index] = cachedRenderers[index].material.color;
+                baseColors[index] = RuntimePrimitiveVisuals.GetColor(cachedRenderers[index], Color.white);
             }
         }
 
@@ -57,7 +58,7 @@ namespace Tanks.Combat
 
             for (int index = 0; index < cachedRenderers.Length; index++)
             {
-                cachedRenderers[index].material.color = Color.Lerp(baseColors[index], flashColor, flashStrength);
+                RuntimePrimitiveVisuals.SetColor(cachedRenderers[index], Color.Lerp(baseColors[index], flashColor, flashStrength));
             }
         }
 

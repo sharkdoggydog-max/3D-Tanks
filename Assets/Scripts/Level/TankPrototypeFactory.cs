@@ -348,17 +348,15 @@ namespace Tanks.Level
             Color color,
             bool keepCollider = false)
         {
-            GameObject cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            cube.name = name;
-            cube.transform.SetParent(parent, false);
-            cube.transform.localPosition = localPosition;
-            cube.transform.localScale = localScale;
-            cube.GetComponent<Renderer>().material.color = color;
-
-            if (!keepCollider)
-            {
-                Object.Destroy(cube.GetComponent<Collider>());
-            }
+            GameObject cube = RuntimePrimitiveVisuals.CreatePrimitive(
+                PrimitiveType.Cube,
+                name,
+                parent,
+                localPosition,
+                localScale,
+                color,
+                RuntimeMaterialKind.Opaque,
+                keepCollider);
 
             return cube.transform;
         }
@@ -371,17 +369,15 @@ namespace Tanks.Level
             Color color,
             bool keepCollider = false)
         {
-            GameObject cylinder = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            cylinder.name = name;
-            cylinder.transform.SetParent(parent, false);
-            cylinder.transform.localPosition = localPosition;
-            cylinder.transform.localScale = localScale;
-            cylinder.GetComponent<Renderer>().material.color = color;
-
-            if (!keepCollider)
-            {
-                Object.Destroy(cylinder.GetComponent<Collider>());
-            }
+            GameObject cylinder = RuntimePrimitiveVisuals.CreatePrimitive(
+                PrimitiveType.Cylinder,
+                name,
+                parent,
+                localPosition,
+                localScale,
+                color,
+                RuntimeMaterialKind.Opaque,
+                keepCollider);
 
             return cylinder.transform;
         }
