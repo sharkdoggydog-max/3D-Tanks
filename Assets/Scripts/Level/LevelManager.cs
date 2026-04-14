@@ -152,6 +152,33 @@ namespace Tanks.Level
             LoadCurrentLevel();
         }
 
+        public void ReturnToMainMenu()
+        {
+            isAdvancingLevel = false;
+
+            if (!isInitialized)
+            {
+                InitializeRun();
+                return;
+            }
+
+            if (gameManager == null)
+            {
+                gameManager = GameManager.Instance != null ? GameManager.Instance : GetComponent<GameManager>();
+            }
+
+            if (gameManager == null)
+            {
+                Debug.LogWarning("[LevelManager] Return to menu requested without an active GameManager. Reinitializing run.");
+                isInitialized = false;
+                InitializeRun();
+                return;
+            }
+
+            gameManager.ResetRun();
+            ShowMainMenu();
+        }
+
         private void ShowMainMenu()
         {
             isAdvancingLevel = false;
@@ -226,7 +253,11 @@ namespace Tanks.Level
                 gameManager.Progression.PlayerProjectileSpeed * preset.ProjectileSpeedMultiplier,
                 preset.ProjectileDamage,
                 gameManager.Progression.PlayerProjectileLifetime * preset.ProjectileLifetimeMultiplier,
-                Mathf.Max(0.18f, gameManager.Progression.PlayerProjectileRadius + preset.ProjectileRadiusOffset));
+                Mathf.Max(0.18f, gameManager.Progression.PlayerProjectileRadius + preset.ProjectileRadiusOffset),
+                preset.SplashRadius,
+                preset.SplashDamageMultiplier,
+                preset.BurstCount,
+                preset.BurstInterval);
             weapon.ConfigureProjectileStyle(ProjectileStyle.Player);
 
             PlayerTankController controller = playerTank.AddComponent<PlayerTankController>();
@@ -280,7 +311,11 @@ namespace Tanks.Level
                 archetype.ProjectileSpeed,
                 archetype.ProjectileDamage,
                 archetype.ProjectileLifetime,
-                archetype.ProjectileRadius);
+                archetype.ProjectileRadius,
+                archetype.SplashRadius,
+                archetype.SplashDamageMultiplier,
+                archetype.BurstCount,
+                archetype.BurstInterval);
             weapon.ConfigureProjectileStyle(GetProjectileStyle(archetype.Variant));
 
             TankTurretAim turretAim = enemyTank.GetComponent<TankTurretAim>();
@@ -584,6 +619,9 @@ namespace Tanks.Level
             {
                 EnemyVariant.Raider => ProjectileStyle.RaiderEnemy,
                 EnemyVariant.Bulwark => ProjectileStyle.BulwarkEnemy,
+                EnemyVariant.Artillery => ProjectileStyle.ArtilleryEnemy,
+                EnemyVariant.Striker => ProjectileStyle.StrikerEnemy,
+                EnemyVariant.Scout => ProjectileStyle.ScoutEnemy,
                 _ => ProjectileStyle.BasicEnemy
             };
         }
@@ -609,7 +647,11 @@ namespace Tanks.Level
                     1.18f,
                     0.72f,
                     -0.08f,
-                    0.88f),
+                    0.88f,
+                    0f,
+                    0f,
+                    1,
+                    0f),
 
                 EnemyVariant.Bulwark => new PlayerTankPreset(
                     EnemyVariant.Bulwark,
@@ -628,7 +670,80 @@ namespace Tanks.Level
                     0.9f,
                     1.75f,
                     0.12f,
-                    1.18f),
+                    1.18f,
+                    0f,
+                    0f,
+                    1,
+                    0f),
+
+                EnemyVariant.Artillery => new PlayerTankPreset(
+                    EnemyVariant.Artillery,
+                    "Artillery",
+                    new Color(0.38f, 0.46f, 0.28f),
+                    new Color(1f, 0.82f, 0.48f),
+                    1f,
+                    0.88f,
+                    1.72f,
+                    1.08f,
+                    4f,
+                    5.4f,
+                    94f,
+                    126f,
+                    1.86f,
+                    0.82f,
+                    1.55f,
+                    0.12f,
+                    1.45f,
+                    2.2f,
+                    0.6f,
+                    1,
+                    0f),
+
+                EnemyVariant.Striker => new PlayerTankPreset(
+                    EnemyVariant.Striker,
+                    "Striker",
+                    new Color(0.54f, 0.18f, 0.14f),
+                    new Color(1f, 0.7f, 0.4f),
+                    1.02f,
+                    0.92f,
+                    0.92f,
+                    1.22f,
+                    6f,
+                    8.6f,
+                    158f,
+                    228f,
+                    1.12f,
+                    1f,
+                    0.78f,
+                    0.02f,
+                    0.95f,
+                    0f,
+                    0f,
+                    2,
+                    0.1f),
+
+                EnemyVariant.Scout => new PlayerTankPreset(
+                    EnemyVariant.Scout,
+                    "Scout",
+                    new Color(0.18f, 0.34f, 0.46f),
+                    new Color(0.7f, 1f, 0.96f),
+                    0.76f,
+                    0.68f,
+                    1.34f,
+                    0.64f,
+                    3.5f,
+                    11.4f,
+                    228f,
+                    340f,
+                    0.68f,
+                    1.08f,
+                    0.52f,
+                    -0.1f,
+                    0.96f,
+                    0f,
+                    0f,
+                    1,
+                    0f),
 
                 _ => new PlayerTankPreset(
                     EnemyVariant.Basic,
@@ -647,7 +762,11 @@ namespace Tanks.Level
                     1f,
                     1f,
                     0f,
-                    1f)
+                    1f,
+                    0f,
+                    0f,
+                    1,
+                    0f)
             };
         }
 
@@ -670,7 +789,11 @@ namespace Tanks.Level
                 float projectileSpeedMultiplier,
                 float projectileDamage,
                 float projectileRadiusOffset,
-                float projectileLifetimeMultiplier)
+                float projectileLifetimeMultiplier,
+                float splashRadius,
+                float splashDamageMultiplier,
+                int burstCount,
+                float burstInterval)
             {
                 VisualVariant = visualVariant;
                 DisplayName = displayName;
@@ -689,6 +812,10 @@ namespace Tanks.Level
                 ProjectileDamage = projectileDamage;
                 ProjectileRadiusOffset = projectileRadiusOffset;
                 ProjectileLifetimeMultiplier = projectileLifetimeMultiplier;
+                SplashRadius = splashRadius;
+                SplashDamageMultiplier = splashDamageMultiplier;
+                BurstCount = burstCount;
+                BurstInterval = burstInterval;
             }
 
             public EnemyVariant VisualVariant { get; }
@@ -708,6 +835,10 @@ namespace Tanks.Level
             public float ProjectileDamage { get; }
             public float ProjectileRadiusOffset { get; }
             public float ProjectileLifetimeMultiplier { get; }
+            public float SplashRadius { get; }
+            public float SplashDamageMultiplier { get; }
+            public int BurstCount { get; }
+            public float BurstInterval { get; }
         }
     }
 

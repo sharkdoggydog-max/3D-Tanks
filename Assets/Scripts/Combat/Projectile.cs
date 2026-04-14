@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Tanks.Core;
 using UnityEngine;
 
@@ -13,6 +14,8 @@ namespace Tanks.Combat
 
         private float damage = 1f;
         private float lifetime = 4f;
+        private float splashRadius;
+        private float splashDamageMultiplier;
         private ProjectileStyle projectileStyle = ProjectileStyle.Player;
         private Team owningTeam = Team.Neutral;
         private GameObject owner;
@@ -31,6 +34,8 @@ namespace Tanks.Combat
             float damageAmount,
             float maxLifetime,
             float projectileRadius,
+            float splashDamageRadius,
+            float splashMultiplier,
             ProjectileStyle style,
             Team team,
             GameObject ownerObject)
@@ -46,7 +51,7 @@ namespace Tanks.Combat
             projectileObject.transform.SetPositionAndRotation(position, rotation);
 
             Projectile projectile = projectileObject.AddComponent<Projectile>();
-            projectile.Initialize(direction, speed, damageAmount, maxLifetime, projectileRadius, style, team, ownerObject);
+            projectile.Initialize(direction, speed, damageAmount, maxLifetime, projectileRadius, splashDamageRadius, splashMultiplier, style, team, ownerObject);
             return projectile;
         }
 
@@ -73,6 +78,8 @@ namespace Tanks.Combat
             float damageAmount,
             float maxLifetime,
             float projectileRadius,
+            float splashDamageRadius,
+            float splashMultiplier,
             ProjectileStyle style,
             Team team,
             GameObject ownerObject)
@@ -80,6 +87,8 @@ namespace Tanks.Combat
             radius = Mathf.Max(0.15f, projectileRadius);
             damage = damageAmount;
             lifetime = maxLifetime;
+            splashRadius = Mathf.Max(0f, splashDamageRadius);
+            splashDamageMultiplier = Mathf.Clamp01(splashMultiplier);
             projectileStyle = style;
             owningTeam = team;
             owner = ownerObject;
@@ -143,11 +152,13 @@ namespace Tanks.Combat
                 Log($"Hit {targetHealth.name} for {damage:0.##} damage.");
                 SpawnImpactEffect(impactPoint, targetHealth.Team, true);
                 targetHealth.ApplyDamage(damage, owner);
+                ApplySplashDamage(impactPoint, targetHealth);
             }
             else
             {
                 Log($"Hit world collider {other.name}.");
                 SpawnImpactEffect(impactPoint, Team.Neutral, false);
+                ApplySplashDamage(impactPoint, null);
             }
 
             Destroy(gameObject);
@@ -221,6 +232,17 @@ namespace Tanks.Combat
                     new Vector3(size * 1.4f, size * 0.4f, size * 1.4f),
                     Vector3.up * 0.1f);
             }
+            else if (projectileStyle == ProjectileStyle.ArtilleryEnemy || splashRadius > radius + 0.15f)
+            {
+                float splashSize = Mathf.Max(size * 1.2f, splashRadius * 0.9f);
+                SimpleLifetimeEffect.SpawnCube(
+                    position + Vector3.up * 0.02f,
+                    impactColor,
+                    life * 1.25f,
+                    new Vector3(splashSize * 0.75f, splashSize * 0.08f, splashSize * 0.75f),
+                    new Vector3(splashSize * 1.45f, splashSize * 0.04f, splashSize * 1.45f),
+                    Vector3.zero);
+            }
         }
 
         private void SpawnTrailEffect()
@@ -253,6 +275,36 @@ namespace Tanks.Combat
                         direction * (-speed * 0.018f));
                     break;
 
+                case ProjectileStyle.ArtilleryEnemy:
+                    SimpleLifetimeEffect.SpawnCube(
+                        trailPosition,
+                        trailColor,
+                        0.16f,
+                        new Vector3(radius * 0.9f, radius * 0.65f, radius * 2.1f),
+                        new Vector3(radius * 0.45f, radius * 0.3f, radius * 0.9f),
+                        direction * (-speed * 0.015f));
+                    break;
+
+                case ProjectileStyle.StrikerEnemy:
+                    SimpleLifetimeEffect.SpawnCube(
+                        trailPosition,
+                        trailColor,
+                        0.08f,
+                        new Vector3(radius * 0.85f, radius * 0.4f, radius * 1.55f),
+                        new Vector3(radius * 0.35f, radius * 0.2f, radius * 0.62f),
+                        direction * (-speed * 0.026f));
+                    break;
+
+                case ProjectileStyle.ScoutEnemy:
+                    SimpleLifetimeEffect.SpawnSphere(
+                        trailPosition,
+                        trailColor,
+                        0.07f,
+                        Vector3.one * (radius * 0.72f),
+                        Vector3.one * (radius * 0.28f),
+                        direction * (-speed * 0.03f));
+                    break;
+
                 case ProjectileStyle.BasicEnemy:
                     SimpleLifetimeEffect.SpawnSphere(
                         trailPosition,
@@ -281,6 +333,9 @@ namespace Tanks.Combat
             {
                 ProjectileStyle.RaiderEnemy => 0.028f,
                 ProjectileStyle.BulwarkEnemy => 0.05f,
+                ProjectileStyle.ArtilleryEnemy => 0.06f,
+                ProjectileStyle.StrikerEnemy => 0.024f,
+                ProjectileStyle.ScoutEnemy => 0.022f,
                 ProjectileStyle.BasicEnemy => 0.04f,
                 _ => 0.035f
             };
@@ -292,6 +347,9 @@ namespace Tanks.Combat
             {
                 ProjectileStyle.RaiderEnemy => 0.88f,
                 ProjectileStyle.BulwarkEnemy => 1.45f,
+                ProjectileStyle.ArtilleryEnemy => 1.75f,
+                ProjectileStyle.StrikerEnemy => 1.08f,
+                ProjectileStyle.ScoutEnemy => 0.82f,
                 ProjectileStyle.BasicEnemy => 1.05f,
                 _ => 1f
             };
@@ -303,9 +361,52 @@ namespace Tanks.Combat
             {
                 ProjectileStyle.RaiderEnemy => 0.85f,
                 ProjectileStyle.BulwarkEnemy => 1.25f,
+                ProjectileStyle.ArtilleryEnemy => 1.45f,
+                ProjectileStyle.StrikerEnemy => 0.95f,
+                ProjectileStyle.ScoutEnemy => 0.8f,
                 ProjectileStyle.BasicEnemy => 1.05f,
                 _ => 1f
             };
+        }
+
+        private void ApplySplashDamage(Vector3 impactPoint, Health primaryTarget)
+        {
+            if (splashRadius <= radius + 0.05f || splashDamageMultiplier <= 0.01f)
+            {
+                return;
+            }
+
+            Collider[] hits = Physics.OverlapSphere(impactPoint, splashRadius);
+            if (hits == null || hits.Length == 0)
+            {
+                return;
+            }
+
+            HashSet<Health> damagedTargets = new HashSet<Health>();
+
+            for (int index = 0; index < hits.Length; index++)
+            {
+                Health nearbyHealth = hits[index].GetComponentInParent<Health>();
+                if (nearbyHealth == null ||
+                    nearbyHealth == primaryTarget ||
+                    nearbyHealth.Team == owningTeam ||
+                    !damagedTargets.Add(nearbyHealth))
+                {
+                    continue;
+                }
+
+                float distance = Vector3.Distance(impactPoint, hits[index].ClosestPoint(impactPoint));
+                float normalizedDistance = Mathf.Clamp01(distance / splashRadius);
+                float falloff = Mathf.Lerp(1f, 0.35f, normalizedDistance);
+                float splashDamage = damage * splashDamageMultiplier * falloff;
+
+                if (splashDamage <= 0.05f)
+                {
+                    continue;
+                }
+
+                nearbyHealth.ApplyDamage(splashDamage, owner);
+            }
         }
 
         private static void Log(string message)

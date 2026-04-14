@@ -19,6 +19,10 @@ namespace Tanks.Enemy
             float projectileDamage,
             float projectileRadius,
             float projectileLifetime,
+            float splashRadius,
+            float splashDamageMultiplier,
+            int burstCount,
+            float burstInterval,
             float hullScale,
             float turretScale,
             float barrelLengthScale,
@@ -46,6 +50,10 @@ namespace Tanks.Enemy
             ProjectileDamage = projectileDamage;
             ProjectileRadius = projectileRadius;
             ProjectileLifetime = projectileLifetime;
+            SplashRadius = splashRadius;
+            SplashDamageMultiplier = splashDamageMultiplier;
+            BurstCount = burstCount;
+            BurstInterval = burstInterval;
             HullScale = hullScale;
             TurretScale = turretScale;
             BarrelLengthScale = barrelLengthScale;
@@ -74,6 +82,10 @@ namespace Tanks.Enemy
         public float ProjectileDamage { get; }
         public float ProjectileRadius { get; }
         public float ProjectileLifetime { get; }
+        public float SplashRadius { get; }
+        public float SplashDamageMultiplier { get; }
+        public int BurstCount { get; }
+        public float BurstInterval { get; }
         public float HullScale { get; }
         public float TurretScale { get; }
         public float BarrelLengthScale { get; }

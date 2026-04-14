@@ -7,7 +7,10 @@ namespace Tanks.Combat
         Player = 0,
         BasicEnemy = 1,
         RaiderEnemy = 2,
-        BulwarkEnemy = 3
+        BulwarkEnemy = 3,
+        ArtilleryEnemy = 4,
+        StrikerEnemy = 5,
+        ScoutEnemy = 6
     }
 
     public static class CombatVisualPalette
@@ -19,6 +22,9 @@ namespace Tanks.Combat
                 ProjectileStyle.Player => new Color(0.95f, 0.88f, 0.25f),
                 ProjectileStyle.RaiderEnemy => new Color(1f, 0.82f, 0.22f),
                 ProjectileStyle.BulwarkEnemy => new Color(0.7f, 0.88f, 1f),
+                ProjectileStyle.ArtilleryEnemy => new Color(1f, 0.72f, 0.32f),
+                ProjectileStyle.StrikerEnemy => new Color(1f, 0.52f, 0.32f),
+                ProjectileStyle.ScoutEnemy => new Color(0.62f, 1f, 0.96f),
                 ProjectileStyle.BasicEnemy => new Color(1f, 0.42f, 0.22f),
                 _ => GetProjectileColor(team)
             };
@@ -61,6 +67,9 @@ namespace Tanks.Combat
                 ProjectileStyle.Player => new Color(1f, 0.95f, 0.55f),
                 ProjectileStyle.RaiderEnemy => new Color(1f, 0.76f, 0.3f),
                 ProjectileStyle.BulwarkEnemy => new Color(0.82f, 0.94f, 1f),
+                ProjectileStyle.ArtilleryEnemy => new Color(1f, 0.84f, 0.46f),
+                ProjectileStyle.StrikerEnemy => new Color(1f, 0.68f, 0.36f),
+                ProjectileStyle.ScoutEnemy => new Color(0.78f, 1f, 0.98f),
                 ProjectileStyle.BasicEnemy => new Color(1f, 0.6f, 0.3f),
                 _ => GetMuzzleFlashColor(team)
             };
@@ -83,6 +92,9 @@ namespace Tanks.Combat
                 ProjectileStyle.Player => new Color(1f, 0.9f, 0.35f),
                 ProjectileStyle.RaiderEnemy => new Color(1f, 0.55f, 0.22f),
                 ProjectileStyle.BulwarkEnemy => new Color(0.78f, 0.94f, 1f),
+                ProjectileStyle.ArtilleryEnemy => new Color(1f, 0.82f, 0.38f),
+                ProjectileStyle.StrikerEnemy => new Color(1f, 0.62f, 0.28f),
+                ProjectileStyle.ScoutEnemy => new Color(0.72f, 1f, 0.94f),
                 ProjectileStyle.BasicEnemy => new Color(1f, 0.72f, 0.32f),
                 _ => GetImpactColor(impactedTeam)
             };
